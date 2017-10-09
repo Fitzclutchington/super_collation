@@ -1,0 +1,4 @@
+*.nc
+*.pyc
+*.tmp
+data/
