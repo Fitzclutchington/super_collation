@@ -2,6 +2,7 @@
 *.pyc
 *.tmp
 *.png
+*.mat
 data/
 images/
 point_lists/
