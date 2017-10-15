@@ -1,4 +1,7 @@
 *.nc
 *.pyc
 *.tmp
+*.png
 data/
+images/
+point_lists/
