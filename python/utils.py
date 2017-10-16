@@ -11,6 +11,6 @@ def read_pixels(point_file):
     points = []
     with open(point_file, 'r') as f:
         for line in f:
-            point = map(int,line.split(','))
+            point = map(int,line.strip().strip('()').split(','))
             points.append((point[0],point[1]))
     return points
