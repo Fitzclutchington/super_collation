@@ -9,6 +9,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import scipy.io as sio
 
 import utils
 
@@ -55,8 +56,12 @@ class FrequencyMap:
         cbar1 = plt.colorbar(img1, cax=cax1)
         plt.show()
 
+    def save_map(self, save_loc):
+        data = { "frequencies": self.frequency_map  }
+        sio.savemat(save_loc, data)
 def main():
 
+    save_loc = sys.argv[2]
     l3u_folder = sys.argv[1]
     l3u_file_list = sorted(glob.glob((os.path.join(l3u_folder,'*.nc'))))
 
@@ -68,6 +73,7 @@ def main():
     frequency_map = FrequencyMap(l3u_file_list, 'sea_surface_temperature')
     frequency_map.compute_frequencies(vmin,vmax)
     frequency_map.display_map()
+    frequency_map.save_map(save_loc)
 
 if __name__ == '__main__':
     main()
