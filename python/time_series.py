@@ -56,6 +56,7 @@ class TimeSeries:
                     data['polar'][variable][pixel][satellite_name] = []
         return data
 
+
     def extract_time_series(self, vmin, vmax):
 
         num_files = len(self.l3u_geo_granule_list)
@@ -119,11 +120,27 @@ class TimeSeries:
                 self.data['polar']['sses'][p][satellite_name].append(sses_val)
             print i, '/', num_files, 'polar'
 
+    def save_data(self, save_loc):
+        save_mat = {}
+
+        for category in self.data:
+            for variable in self.data[category]:
+                for pixel in map(str,self.pixel_list):
+                    if category == 'geo':
+                        key = '_'.join([category,variable,pixel])
+                        save_mat[key] = self.data[category][variable][pixel]
+                    else:
+                        for satellite_name in self.satellite_list:
+                            key = '_'.join([category,variable,pixel, satellite_name])
+                            save_mat[key] = self.data[category][variable][pixel][satellite_name]
+        sio.savemat(save_loc, save_mat)
+
     def display_time_series(self, sses_flag):
 
         # different colors for each satellite
         # todo make dictionary
         colors = ['m','b','g','c','r','#ffa500', '#551a8b']
+        color_dict = { satellite_name: color for satellite_name, color in zip(self.satellite_list,colors)}
 
         for pixel in map(str,self.pixel_list):
 
@@ -148,32 +165,54 @@ class TimeSeries:
                 plt.plot(time_geo, sst_sses_diff , 'b.', markersize=5)
 
             # plot polar data
-            for satellite_name,c in zip(self.satellite_list,colors):
+            for satellite_name in self.satellite_list:
                 sst_polar = self.data['polar']['sst'][pixel][satellite_name]
                 time_polar = self.data['polar']['time'][pixel][satellite_name]
 
-                plt.plot(time_polar, sst_polar, '.', markersize=20, c=c, label=satellite_name)
+                plt.plot(time_polar, sst_polar, '.', markersize=20, c=color_dict[satellite_name], label=satellite_name)
 
                 if sses_flag:
                     sses_polar = self.data['polar']['sses'][pixel][satellite_name]
                     sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
                     label_name = ' '.join([satellite_name, "SSES diff"])
 
-                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, c=c, label=label_name)
+                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, fillstyle='none', c=color_dict[satellite_name], label=label_name)
                     
             plt.legend()
             plt.show()
 
+    """
+    def open_data_file(self, filename):
+        data = sio.loadmat(filename)
+        self.data = {'geo': data['geo'],
+                     'polar': data['polar']
+                    }
+
+    """
 
 
-#def main():
 
+def save_data(ts, save_loc):
+        save_mat = {}
+
+        for category in ts.data:
+            for variable in ts.data[category]:
+                for pixel in map(str,ts.pixel_list):
+                    if category == 'geo':
+                        key = '_'.join([category,variable,pixel])
+                        save_mat[key] = ts.data[category][variable][pixel]
+                    else:
+                        for satellite_name in ts.satellite_list:
+                            key = '_'.join([category,variable,pixel, satellite_name])
+                            save_mat[key] = ts.data[category][variable][pixel][satellite_name]
+        sio.savemat(save_loc, save_mat)
 
 def display_time_series(ts, sses_flag):
 
         # different colors for each satellite
         # todo make dictionary
         colors = ['m','b','g','c','r','#ffa500', '#551a8b']
+        color_dict = { satellite_name: color for satellite_name, color in zip(self.satellite_list,colors)}
 
         for pixel in map(str,ts.pixel_list):
 
@@ -198,7 +237,7 @@ def display_time_series(ts, sses_flag):
                 plt.plot(time_geo, sst_sses_diff , 'b.', markersize=5)
 
             # plot polar data
-            for satellite_name,c in zip(ts.satellite_list,colors):
+            for satellite_name in ts.satellite_list:
                 sst_polar = ts.data['polar']['sst'][pixel][satellite_name]
                 time_polar = ts.data['polar']['time'][pixel][satellite_name]
 
@@ -209,30 +248,43 @@ def display_time_series(ts, sses_flag):
                     sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
                     label_name = ' '.join([satellite_name, "SSES diff"])
 
-                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, c=c, label=label_name)
+                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, c=color_dict[satellite_name], label=label_name)
                     
             plt.legend()
             plt.show()
 
-l3u_geo_folder = sys.argv[1]
-l3u_polar_folder = sys.argv[2]
-pixel_list_file = sys.argv[3]
+if len(sys.argv) == 5:
+    l3u_geo_folder = sys.argv[1]
+    l3u_polar_folder = sys.argv[2]
+    pixel_list_file = sys.argv[3]
+    data_file = sys.argv[4]
 
-pixel_list = utils.read_pixels(pixel_list_file)
-l3u_geo_file_list = sorted(glob.glob((os.path.join(l3u_geo_folder,'*.nc'))))
-l3u_polar_file_list = sorted(glob.glob((os.path.join(l3u_polar_folder,'*.nc'))))
+    pixel_list = utils.read_pixels(pixel_list_file)
+    l3u_geo_file_list = sorted(glob.glob((os.path.join(l3u_geo_folder,'*.nc'))))
+    l3u_polar_file_list = sorted(glob.glob((os.path.join(l3u_polar_folder,'*.nc'))))
 
-l3u_variable = 'sea_surface_temperature'
+    time_series = TimeSeries( l3u_geo_file_list, l3u_polar_file_list, pixel_list, 'sea_surface_temperature')
+    time_series.display_time_series(True)
 
-vmin = 271.15
-vmax = 310
+elif len(sys.argv) == 4:
+    l3u_geo_folder = sys.argv[1]
+    l3u_polar_folder = sys.argv[2]
+    pixel_list_file = sys.argv[3]
 
-time_series = TimeSeries(l3u_geo_file_list, l3u_polar_file_list, pixel_list, 'sea_surface_temperature')
-time_series.extract_time_series(vmin,vmax)
-time_series.display_time_series(True)
-sio.savemat("time_series_data.mat",time_series.data)
+    pixel_list = utils.read_pixels(pixel_list_file)
+    l3u_geo_file_list = sorted(glob.glob((os.path.join(l3u_geo_folder,'*.nc'))))
+    l3u_polar_file_list = sorted(glob.glob((os.path.join(l3u_polar_folder,'*.nc'))))
 
-"""
-if __name__ == '__main__':
-    main()
-"""
+    l3u_variable = 'sea_surface_temperature'
+
+    vmin = 271.15
+    vmax = 310
+
+    time_series = TimeSeries( l3u_geo_file_list, l3u_polar_file_list, pixel_list, 'sea_surface_temperature')
+    time_series.extract_time_series(vmin,vmax)
+    time_series.display_time_series(True)
+    time_series.save_data('../data/time_series_20170913')
+
+else:
+    print "usage: python time_series.py <geo_file_list> <l3u_polar_file_list> <pixel_list>"
+    print "usage: python time_series.py <geo_file_list> <l3u_polar_file_list> <pixel_list> <data_file>"
