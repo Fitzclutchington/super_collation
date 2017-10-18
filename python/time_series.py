@@ -120,20 +120,6 @@ class TimeSeries:
                 self.data['polar']['sses'][p][satellite_name].append(sses_val)
             print i, '/', num_files, 'polar'
 
-    def save_data(self, save_loc):
-        save_mat = {}
-
-        for category in self.data:
-            for variable in self.data[category]:
-                for pixel in map(str,self.pixel_list):
-                    if category == 'geo':
-                        key = '_'.join([category,variable,pixel])
-                        save_mat[key] = self.data[category][variable][pixel]
-                    else:
-                        for satellite_name in self.satellite_list:
-                            key = '_'.join([category,variable,pixel, satellite_name])
-                            save_mat[key] = self.data[category][variable][pixel][satellite_name]
-        sio.savemat(save_loc, save_mat)
 
     def display_time_series(self, sses_flag):
 
@@ -161,8 +147,8 @@ class TimeSeries:
                 sses_geo = self.data['geo']['sses'][pixel]
                 sst_sses_diff = np.array(sst_geo) - np.array(sses_geo)
 
-                plt.plot(time_geo, sst_sses_diff , c='b', lw=2 ,label='SST - SSES ABI')
-                plt.plot(time_geo, sst_sses_diff , 'b.', markersize=5)
+                plt.plot(time_geo, sst_sses_diff , c='w', lw=2 )
+                plt.plot(time_geo, sst_sses_diff , 'w.', markersize=5)
 
             # plot polar data
             for satellite_name in self.satellite_list:
@@ -176,19 +162,74 @@ class TimeSeries:
                     sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
                     label_name = ' '.join([satellite_name, "SSES diff"])
 
-                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, fillstyle='none', c=color_dict[satellite_name], label=label_name)
+                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, fillstyle='none', c='w')
                     
             plt.legend()
             plt.show()
 
-    """
+        for pixel in map(str,self.pixel_list):
+
+            sst_geo = self.data['geo']['sst'][pixel]
+            time_geo = self.data['geo']['time'][pixel]
+            
+            title = ("SST - SSES time series at", str(pixel))
+            fig = plt.figure()
+            fig.canvas.set_window_title(pixel + "_SSES")
+            plt.title(title)
+
+            # plot geo data
+            plt.plot(time_geo, sst_geo , c='w', lw=2)
+            plt.plot(time_geo, sst_geo , 'w.', markersize=5)
+
+            # plot sst - sses_bias
+            if sses_flag:
+                sses_geo = self.data['geo']['sses'][pixel]
+                sst_sses_diff = np.array(sst_geo) - np.array(sses_geo)
+
+                plt.plot(time_geo, sst_sses_diff , c='b', lw=2 ,label='SST - SSES ABI')
+                plt.plot(time_geo, sst_sses_diff , 'b.', markersize=5)
+
+            # plot polar data
+            for satellite_name in self.satellite_list:
+                sst_polar = self.data['polar']['sst'][pixel][satellite_name]
+                time_polar = self.data['polar']['time'][pixel][satellite_name]
+
+                plt.plot(time_polar, sst_polar, '.', markersize=20, c='w')
+
+                if sses_flag:
+                    sses_polar = self.data['polar']['sses'][pixel][satellite_name]
+                    sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
+                    label_name = ' '.join([satellite_name, "SSES diff"])
+
+                    plt.plot(time_polar, sst_sses_diff , '.', markersize=10, fillstyle='none', c=color_dict[satellite_name], label=label_name)
+                    
+            plt.legend()
+            plt.show()
+
+    def save_data(self, save_loc):
+        save_mat = {}
+
+        for category in self.data:
+            for variable in self.data[category]:
+                for pixel in map(str,self.pixel_list):
+                    if category == 'geo':
+                        key = '-'.join([category,variable,pixel])
+                        save_mat[key] = self.data[category][variable][pixel]
+                    else:
+                        for satellite_name in self.satellite_list:
+                            key = '-'.join([category,variable,pixel, satellite_name])
+                            save_mat[key] = self.data[category][variable][pixel][satellite_name]
+        sio.savemat(save_loc, save_mat)
+
+    
     def open_data_file(self, filename):
         data = sio.loadmat(filename)
-        self.data = {'geo': data['geo'],
-                     'polar': data['polar']
-                    }
-
-    """
+        for key in data:
+            variables = key.split('-')
+            if len(variables) == 3:
+                self.data[variables[0]][variables[1]][variables[2]] = np.squeeze(data[key])
+            elif len(variables) == 4:
+                self.data[variables[0]][variables[1]][variables[2]][variables[3]] = np.squeeze(data[key])
 
 
 
@@ -212,9 +253,36 @@ def display_time_series(ts, sses_flag):
         # different colors for each satellite
         # todo make dictionary
         colors = ['m','b','g','c','r','#ffa500', '#551a8b']
-        color_dict = { satellite_name: color for satellite_name, color in zip(self.satellite_list,colors)}
+        color_dict = { satellite_name: color for satellite_name, color in zip(ts.satellite_list,colors)}
 
         for pixel in map(str,ts.pixel_list):
+
+            # plot sst - sses_bias
+            if sses_flag:
+                sses_geo = ts.data['geo']['sses'][pixel]
+                sst_sses_diff = np.array(sst_geo) - np.array(sses_geo)
+
+                plt.plot(time_geo, sst_sses_diff , c='w', lw=2 )
+                plt.plot(time_geo, sst_sses_diff , 'w.', markersize=5)
+
+            # plot polar data
+            for satellite_name in ts.satellite_list:
+                if sses_flag:
+                    sses_polar = ts.data['polar']['sses'][pixel][satellite_name]
+                    sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
+                    label_name = ' '.join([satellite_name, "SSES diff"])
+
+                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, fillstyle='none', c='w')
+
+                sst_polar = ts.data['polar']['sst'][pixel][satellite_name]
+                time_polar = ts.data['polar']['time'][pixel][satellite_name]
+
+                plt.plot(time_polar, sst_polar, '.', markersize=20, c=color_dict[satellite_name], label=satellite_name)
+
+                
+                    
+            plt.legend()
+            plt.show()
 
             sst_geo = ts.data['geo']['sst'][pixel]
             time_geo = ts.data['geo']['time'][pixel]
@@ -228,6 +296,38 @@ def display_time_series(ts, sses_flag):
             plt.plot(time_geo, sst_geo , c='k', lw=2, label='SST ABI')
             plt.plot(time_geo, sst_geo , 'k.', markersize=5)
 
+            
+
+        for pixel in map(str,ts.pixel_list):
+
+            sst_geo = ts.data['geo']['sst'][pixel]
+            time_geo = ts.data['geo']['time'][pixel]
+            
+            title = ("SST - SSES time series at", str(pixel))
+            fig = plt.figure()
+            fig.canvas.set_window_title(pixel + "_SSES")
+            plt.title(title)
+
+            # plot geo data
+            plt.plot(time_geo, sst_geo , c='w', lw=2)
+            plt.plot(time_geo, sst_geo , 'w.', markersize=5)
+
+            
+
+            # plot polar data
+            for satellite_name in ts.satellite_list:
+                sst_polar = ts.data['polar']['sst'][pixel][satellite_name]
+                time_polar = ts.data['polar']['time'][pixel][satellite_name]
+
+                plt.plot(time_polar, sst_polar, '.', markersize=20, c='w')
+
+                if sses_flag:
+                    sses_polar = ts.data['polar']['sses'][pixel][satellite_name]
+                    sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
+                    label_name = ' '.join([satellite_name, "SSES diff"])
+
+                    plt.plot(time_polar, sst_sses_diff , '.', markersize=20,  c=color_dict[satellite_name], label=label_name)
+           
             # plot sst - sses_bias
             if sses_flag:
                 sses_geo = ts.data['geo']['sses'][pixel]
@@ -236,20 +336,6 @@ def display_time_series(ts, sses_flag):
                 plt.plot(time_geo, sst_sses_diff , c='b', lw=2 ,label='SST - SSES ABI')
                 plt.plot(time_geo, sst_sses_diff , 'b.', markersize=5)
 
-            # plot polar data
-            for satellite_name in ts.satellite_list:
-                sst_polar = ts.data['polar']['sst'][pixel][satellite_name]
-                time_polar = ts.data['polar']['time'][pixel][satellite_name]
-
-                plt.plot(time_polar, sst_polar, '.', markersize=20, c=c, label=satellite_name)
-
-                if sses_flag:
-                    sses_polar = ts.data['polar']['sses'][pixel][satellite_name]
-                    sst_sses_diff = np.array(sst_polar) - np.array(sses_polar)
-                    label_name = ' '.join([satellite_name, "SSES diff"])
-
-                    plt.plot(time_polar, sst_sses_diff , 'D', markersize=10, c=color_dict[satellite_name], label=label_name)
-                    
             plt.legend()
             plt.show()
 
@@ -264,6 +350,7 @@ if len(sys.argv) == 5:
     l3u_polar_file_list = sorted(glob.glob((os.path.join(l3u_polar_folder,'*.nc'))))
 
     time_series = TimeSeries( l3u_geo_file_list, l3u_polar_file_list, pixel_list, 'sea_surface_temperature')
+    time_series.open_data_file(data_file)
     time_series.display_time_series(True)
 
 elif len(sys.argv) == 4:
