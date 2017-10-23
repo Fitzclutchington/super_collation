@@ -14,3 +14,9 @@ def read_pixels(point_file):
             point = map(int,line.strip().strip('()').split(','))
             points.append((point[0],point[1]))
     return points
+
+def get_dimensions(granule_file):
+    cdf = netCDF4.Dataset(granule_file)
+    height = cdf.dimensions['lat'].size
+    width = cdf.dimensions['lon'].size
+    return height, width
