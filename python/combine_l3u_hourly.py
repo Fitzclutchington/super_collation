@@ -65,7 +65,7 @@ l3u_sza = np.full(dimensions['l3u'],np.nan)
 l3u_time = np.full(dimensions['l3u'],np.nan)
 
 sza_interp = np.zeros(dimensions['l2p'])
-
+t_utc = np.zeros(dimensions['l2p'])
 #while current_time != next_day:
 for i in range(2):
     date_time_string = current_time.strftime('%Y%m%d%H%M%S')
@@ -84,10 +84,15 @@ for i in range(2):
             sza = utils.read_var(l2p_filename,'satellite_zenith_angle')
             interpolate_quantized_matrix(sza, sza_interp)
             
+            d_time = utils.read_var(l2p_filename,'sst_dtime')
+            current_time_val = current_time.hour + current_time.minute/60.0
+            t_utc = current_time_val + d_time/(60*60)
 
         plt.figure()
-        plt.imshow(sza_interp)
+        plt.imshow(t_utc)
+        plt.colorbar()
         plt.show()
+
     else:
         current_time = current_time + time_delta
         continue
