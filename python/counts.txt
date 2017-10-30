@@ -1,0 +1,3 @@
+frequency_all_sensors: day = 0.28229941358 night = 0.277915092593
+frequency_aqua_viirs: day = 0.18071908642 night = 0.16033804321
+frequency_viirs: day = 0.15549304321 night = 0.138289666667

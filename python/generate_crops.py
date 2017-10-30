@@ -89,6 +89,7 @@ class FrequencyMap:
 
 
 
+crop_file = sys.argv[1]
 
 all_sensors_data = sio.loadmat('../data/overlap_data/frequency_all_sensors.mat')['quality_frequency_night']
 viirs_data =  sio.loadmat('../data/overlap_data/frequency_viirs.mat')['quality_frequency_night']
@@ -98,9 +99,10 @@ cdf = netCDF4.Dataset(filename)
 height = cdf.dimensions['lat'].size
 width = cdf.dimensions['lon'].size
 
+crops = utils.get_crops(crop_file)
 
-#lats = np.squeeze(cdf['lat'][:])
-#lons = np.squeeze(cdf['lon'][:])
+lats = np.squeeze(cdf['lat'][:])
+lons = np.squeeze(cdf['lon'][:])
 
 land_mask = sio.loadmat("../data/land_mask.mat")['land_mask']
 land_layer = np.zeros((height, width, 4))
@@ -109,39 +111,51 @@ g = 98/256.0
 b = 57/256.0
 land_layer[land_mask==255] = [r,g,b,1]
 
-step = 1000
+
 angle = -45
 tick_font = { 'size': 15  }
 
-fig, (ax1, ax2) = plt.subplots(2,1,sharex=True,sharey=True)
-cmap = plt.cm.jet
-norm = mpc.BoundaryNorm(np.arange(-.5 , 7 + 1 ,1), cmap.N)   
-img1 = ax1.imshow(viirs_data, cmap=cmap, norm=norm)
-ax1.imshow(land_layer, interpolation='nearest')
+for crop in crops:
+    x_min = crop[1].start
+    x_max = crop[1].stop
+    y_min = crop[0].start
+    y_max = crop[0].stop
 
-"""
-ax1.set_yticks(np.arange(0,height,step))
-ax1.set_yticklabels(['{0:.2f}'.format(x) for x in lats[::step]],fontdict=tick_font)
-"""
-ax1.set_title("VIIRS")
+    xlen = x_max - x_min
+    ylen = y_max - y_min
 
-div1 = make_axes_locatable(ax1)
-cax1 = div1.append_axes("right", size="5%", pad=0.05)
-cbar1 = plt.colorbar(img1, cax=cax1,ticks=np.linspace(0,7,7+1,dtype=np.int8))
+    step_x = xlen/10
+    step_y = ylen/10
 
-cmap = plt.cm.Spectral_r
-img1 = ax2.imshow(all_sensors_data, cmap=cmap, vmin=1, vmax=14)
-ax2.imshow(land_layer, interpolation='nearest')
-"""
-ax2.set_xticks(np.arange(0,width,step))
-ax2.set_yticks(np.arange(0,height,step))
-ax2.set_xticklabels(['{0:.2f}'.format(x) for x in lons[::step]],fontdict=tick_font, rotation=angle)
-ax2.set_yticklabels(['{0:.2f}'.format(x) for x in lats[::step]],fontdict=tick_font)
-"""
-ax2.set_title("All Sensors")
+    fig, (ax1, ax2) = plt.subplots(1,2,sharex=True,sharey=True)
+    cmap = plt.cm.jet
+    norm = mpc.BoundaryNorm(np.arange(-.5 , 7 + 1 ,1), cmap.N)   
+    img1 = ax1.imshow(viirs_data[crop], cmap=cmap, norm=norm)
+    ax1.imshow(land_layer[crop], interpolation='nearest')
 
-div1 = make_axes_locatable(ax2)
-cax1 = div1.append_axes("right", size="5%", pad=0.05)
-cbar1 = plt.colorbar(img1, cax=cax1)
+    ax1.set_xticks(np.arange(0,xlen,step_x))
+    ax1.set_yticks(np.arange(0,ylen,step_y))
+    ax1.set_xticklabels(['{0:.2f}'.format(x) for x in lons[x_min+1:x_max+1:step_x]],fontdict=tick_font, rotation=angle)
+    ax1.set_yticklabels(['{0:.2f}'.format(x) for x in lats[y_min+1:y_max+1:step_y]],fontdict=tick_font)
 
-plt.show()
+    ax1.set_title("VIIRS")
+
+    div1 = make_axes_locatable(ax1)
+    cax1 = div1.append_axes("right", size="5%", pad=0.05)
+    cbar1 = plt.colorbar(img1, cax=cax1,ticks=np.linspace(0,7,7+1,dtype=np.int8))
+
+    cmap = plt.cm.Spectral_r
+    img1 = ax2.imshow(all_sensors_data[crop], cmap=cmap, vmin=1, vmax=14)
+    ax2.imshow(land_layer[crop], interpolation='nearest')
+
+    ax2.set_xticks(np.arange(0,xlen,step_x))
+    ax2.set_yticks(np.arange(0,ylen,step_y))
+    ax2.set_xticklabels(['{0:.2f}'.format(x) for x in lons[x_min+1:x_max+1:step_x]],fontdict=tick_font, rotation=angle)
+    ax2.set_yticklabels(['{0:.2f}'.format(x) for x in lats[y_min+1:y_max+1:step_y]],fontdict=tick_font)
+    ax2.set_title("All Sensors")
+
+    div1 = make_axes_locatable(ax2)
+    cax1 = div1.append_axes("right", size="5%", pad=0.05)
+    cbar1 = plt.colorbar(img1, cax=cax1)
+
+    plt.show()

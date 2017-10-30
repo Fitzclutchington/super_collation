@@ -19,9 +19,10 @@ class FrequencyMap:
     
 
     def __init__(self, data_files, land_file):
-        self.data_file_1 = data_file_1
-        self.data_file_2 = data_file_2        
-        self.variable = "quality_frequency_night"
+        self.data_files = data_files
+        self.variable_list = ["full_frequency_day", "full_frequency_night",
+                              "masked_frequency_day", "masked_frequency_night",
+                              "quality_frequency_day", "quality_frequency_night" ]
         self.land_file = land_file
         self.create_map_day_night('l2p_flags',2)
 
@@ -44,9 +45,28 @@ class FrequencyMap:
 
     def compute_overlay_frequency_day_night(self):
 
-        self.data_1 = sio.loadmat(self.data_file_1)[variable]
-        self.data_2 = sio.loadmat(self.data_file_2)[variable]
+        self.data = {}
 
+        for data_file in self.data_files:
+            data = sio.loadmat(data_file)
+            for variable in self.variable_list:
+                d = data[variable]
+                if variable in self.data:
+                    if variable.split('_')[0] == 'full':
+                        self.data[variable] += d
+                    else:
+                        d[np.isnan(d)] = 0
+                        self.data[variable] += d
+                else:
+                    if variable.split('_')[0] == 'full':
+                        self.data[variable] = d
+                    else:
+                        d[np.isnan(d)] = 0
+                        self.data[variable] = d
+
+        for variable in self.variable_list:
+            if variable.split('_')[0] != 'full':
+                self.data[variable][self.data[variable] == 0] = np.nan
 
     def plot_mat(self, mat, cmap, day_night):
         step = 1000
@@ -90,58 +110,11 @@ class FrequencyMap:
 
 
 
-all_sensors_data = sio.loadmat('../data/overlap_data/frequency_all_sensors.mat')['quality_frequency_night']
-viirs_data =  sio.loadmat('../data/overlap_data/frequency_viirs.mat')['quality_frequency_night']
+data_folder = sys.argv[1]
+land_file = sys.argv[2]
 
-filename = "/home/fitz/viirs/20171007235000-STAR-L3U_GHRSST-SSTsubskin-VIIRS_NPP-ACSPO_V2.50B04-v02.0-fv01.0.nc"
-cdf = netCDF4.Dataset(filename)
-height = cdf.dimensions['lat'].size
-width = cdf.dimensions['lon'].size
-
-
-#lats = np.squeeze(cdf['lat'][:])
-#lons = np.squeeze(cdf['lon'][:])
-
-land_mask = sio.loadmat("../data/land_mask.mat")['land_mask']
-land_layer = np.zeros((height, width, 4))
-r = 146/256.0
-g = 98/256.0
-b = 57/256.0
-land_layer[land_mask==255] = [r,g,b,1]
-
-step = 1000
-angle = -45
-tick_font = { 'size': 15  }
-
-fig, (ax1, ax2) = plt.subplots(2,1,sharex=True,sharey=True)
-cmap = plt.cm.jet
-norm = mpc.BoundaryNorm(np.arange(-.5 , 7 + 1 ,1), cmap.N)   
-img1 = ax1.imshow(viirs_data, cmap=cmap, norm=norm)
-ax1.imshow(land_layer, interpolation='nearest')
-
-"""
-ax1.set_yticks(np.arange(0,height,step))
-ax1.set_yticklabels(['{0:.2f}'.format(x) for x in lats[::step]],fontdict=tick_font)
-"""
-ax1.set_title("VIIRS")
-
-div1 = make_axes_locatable(ax1)
-cax1 = div1.append_axes("right", size="5%", pad=0.05)
-cbar1 = plt.colorbar(img1, cax=cax1,ticks=np.linspace(0,7,7+1,dtype=np.int8))
-
-cmap = plt.cm.Spectral_r
-img1 = ax2.imshow(all_sensors_data, cmap=cmap, vmin=1, vmax=14)
-ax2.imshow(land_layer, interpolation='nearest')
-"""
-ax2.set_xticks(np.arange(0,width,step))
-ax2.set_yticks(np.arange(0,height,step))
-ax2.set_xticklabels(['{0:.2f}'.format(x) for x in lons[::step]],fontdict=tick_font, rotation=angle)
-ax2.set_yticklabels(['{0:.2f}'.format(x) for x in lats[::step]],fontdict=tick_font)
-"""
-ax2.set_title("All Sensors")
-
-div1 = make_axes_locatable(ax2)
-cax1 = div1.append_axes("right", size="5%", pad=0.05)
-cbar1 = plt.colorbar(img1, cax=cax1)
-
-plt.show()
+data_files = sorted(glob.glob(data_folder+"*.mat"))
+data_files = ["../data/overlap_data/frequency_aqua.mat", "../data/overlap_data/frequency_viirs.mat"]
+frequency_map = FrequencyMap(data_files, land_file)
+frequency_map.compute_overlay_frequency_day_night()
+frequency_map.display_map_day_night()
