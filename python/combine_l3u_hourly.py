@@ -13,6 +13,20 @@ import netCDF4
 
 import utils
 
+
+def interpolate_quantized_matrix(mat, interp_mat):
+    diff = np.diff(mat)
+    end = mat.shape[1]
+    num_rows = mat.shape[0]
+    x_inds = np.arange(end)
+    for i in range(num_rows):
+        edges = np.where(diff[i,:] != 0)[0]
+        mid_ind = np.zeros(edges.shape[0] + 1,dtype=np.uint16)
+        mid_ind[-1] = end-1
+        mid_ind[1:-1] = np.round((edges[0:-1]+edges[1:])/2)
+        f = interpolate.interp1d(mid_ind, mat[i,mid_ind])
+        interp_mat[i,:] = f(x_inds)
+
 save_folder = sys.argv[3]
 folders = { 
             'l3u' : sys.argv[1],
@@ -68,19 +82,12 @@ for i in range(2):
         # compute time and sza
         if l2p_filename in sets['l2p']:
             sza = utils.read_var(l2p_filename,'satellite_zenith_angle')
-            sza_diff = np.diff(sza)
-            end = sza.shape[1]
-            num_rows = sza.shape[0]
-            x_inds = np.arange(end)
-            for i in range(num_rows):
-                edges = np.where(sza_diff[i,:] != 0)[0]
-                mid_ind = np.zeros(edges.shape[0] + 1,dtype=np.uint16)
-                mid_ind[-1] = end-1
-                mid_ind[1:-1] = np.round((edges[0:-1]+edges[1:])/2)
-                f = interpolate.interp1d(mid_ind, sza[i,mid_ind])
-                sza_interp[i,:] = f(x_inds)
+            interpolate_quantized_matrix(sza, sza_interp)
+            
 
-
+        plt.figure()
+        plt.imshow(sza_interp)
+        plt.show()
     else:
         current_time = current_time + time_delta
         continue
